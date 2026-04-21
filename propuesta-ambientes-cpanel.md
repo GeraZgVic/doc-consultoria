@@ -1,9 +1,9 @@
 # Propuesta de Arquitectura de Ambientes
 
-**Elaborado por:** Ing. Victor Gerardo Zuñiga Gamboa
-**Cliente:** Siccoms
-**Fecha:** 21 de abril de 2025
-**Versión:** v1.0
+**Elaborado por:** Ing. Victor Gerardo Zuñiga Gamboa  
+**Cliente:** Siccoms  
+**Fecha:** 21 de abril de 2025  
+**Versión:** v1.0  
 
 ---
 
