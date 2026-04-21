@@ -62,6 +62,7 @@ Características:
 ---
 
 ## Diagrama
+```mermaid
 flowchart TD
 
     DEV[Desarrollador]
@@ -94,6 +95,8 @@ flowchart TD
     E1 --> DB1
     E2 --> DB2
     E3 --> DB3
+```
+
 
 
 ## Repositorio y estrategia Git
