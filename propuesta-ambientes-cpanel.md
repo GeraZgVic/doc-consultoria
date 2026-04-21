@@ -1,5 +1,12 @@
 # Propuesta de Arquitectura de Ambientes
 
+**Elaborado por:** Ing. Victor Gerardo Zuñiga Gamboa
+**Cliente:** Siccoms
+**Fecha:** 21 de abril de 2025
+**Versión:** v1.0
+
+---
+
 ## Objetivo
 
 Definir una base técnica clara para separar el sistema en tres ambientes independientes: **Production**, **Staging** y **Development**. La finalidad es agilizar el trabajo, reducir riesgos al publicar cambios y establecer un flujo ordenado de desarrollo, validación y liberación.
