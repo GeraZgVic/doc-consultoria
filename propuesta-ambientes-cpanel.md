@@ -51,43 +51,29 @@ Ambiente técnico para pruebas durante el desarrollo. No requiere una rama fija;
 
 ---
 
-## Diagrama general
+## Diagramas de arquitectura
 
-```mermaid
-flowchart TD
+### Diagrama 1 — General ejecutivo
 
-    DEV[Desarrollador]
+Flujo completo de promoción de código, roles y ambientes.
 
-    subgraph REPO[Repositorio Git]
-        F[feature/*<br/>fix/*<br/>hotfix/*]
-        D[develop]
-        M[main]
-    end
+![Diagrama General Ejecutivo](../diagrams/diagram-01-general-ejecutivo.png)
 
-    subgraph ENVS[Ambientes]
-        E1[Development<br/>dev.cliente.com]
-        E2[Staging<br/>staging.cliente.com]
-        E3[Production<br/>app.cliente.com]
-    end
+---
 
-    subgraph DBS[Bases de datos]
-        DB1[(DB Development)]
-        DB2[(DB Staging)]
-        DB3[(DB Production)]
-    end
+### Diagrama 2 — Operativo por cliente (Siccoms)
 
-    DEV -->|crear rama desde develop| F
-    F -->|PR base: develop| D
-    F -->|pruebas técnicas opcionales| E1
-    D -->|deploy| E2
-    D -->|PR base: main| M
-    M -->|deploy| E3
+Arquitectura de ambientes y flujo de promoción aterrizado al cliente.
 
-    E1 --> DB1
-    E2 --> DB2
-    E3 --> DB3
-```
+![Diagrama Operativo Siccoms](../diagrams/diagram-02-operativo-siccoms.png)
 
+---
+
+### Diagrama 3 — Multi-cliente (UltraBiz)
+
+Gobierno de código, ambientes y promoción para todos los clientes gestionados por UltraBiz.
+
+![Diagrama Multi-cliente UltraBiz](../diagrams/diagram-03-multicliente-ultrabiz.png)
 ---
 
 ## Estrategia de repositorio Git
@@ -125,6 +111,10 @@ Ejemplos: `fix/error-formulario`, `fix/validacion-correo`
 Ramas para correcciones urgentes que impactan producción.
 
 Ejemplos: `hotfix/error-pago`, `hotfix/fallo-login-prod`
+
+Las ramas hotfix/* se crean desde main (no desde develop), ya que corrigen un problema que existe en producción. Una vez resuelta la corrección, se fusionan en dos destinos: main (para liberar el fix) y develop (para que el fix no se pierda en el siguiente ciclo). Si existe un Staging activo con cambios en curso, también se valida ahí antes de subir a producción.
+
+
 
 ---
 
@@ -198,7 +188,8 @@ Cada ambiente opera con su propia base de datos:
 | Staging | DB Staging (puede ser copia controlada de producción) |
 | Development | DB Development (datos de prueba únicamente) |
 
-Las bases de datos no deben compartirse entre ambientes bajo ninguna circunstancia.
+*Las bases de datos no deben compartirse entre ambientes bajo ninguna circunstancia.*
+Un *punto de atención especial* en CodeIgniter es el manejo de migraciones de base de datos. Se recomienda usar el sistema de migraciones nativo del framework y mantener los archivos de migración versionados en el repositorio. El flujo correcto es: ejecutar migraciones primero en Development, validar en Staging y solo entonces aplicarlas en Production. Nunca se deben aplicar cambios de esquema directamente en la base de datos productiva sin haber pasado por los ambientes previos.
 
 ---
 
@@ -265,7 +256,7 @@ En ramas compartidas como `develop` y `main` siempre se debe usar `git revert`. 
 
 ### Fase 3 — Automatización gradual
 
-- Integración con repositorio remoto
+- Configuración de webhooks o flujo de deploy automático (el repositorio remoto ya debe estar operativo desde la Fase 1 como requisito para los GitHub Rulesets)
 - Configuración de webhook o flujo de deploy automático
 - Estandarización del proceso de promoción entre ambientes
 
