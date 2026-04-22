@@ -74,6 +74,7 @@ Arquitectura de ambientes y flujo de promoción aterrizado al cliente.
 Gobierno de código, ambientes y promoción para todos los clientes gestionados por UltraBiz.
 
 ![Diagrama Multi-cliente UltraBiz](../diagrams/diagram-03-multicliente-ultrabiz.png)
+
 ---
 
 ## Estrategia de repositorio Git
@@ -112,9 +113,7 @@ Ramas para correcciones urgentes que impactan producción.
 
 Ejemplos: `hotfix/error-pago`, `hotfix/fallo-login-prod`
 
-Las ramas hotfix/* se crean desde main (no desde develop), ya que corrigen un problema que existe en producción. Una vez resuelta la corrección, se fusionan en dos destinos: main (para liberar el fix) y develop (para que el fix no se pierda en el siguiente ciclo). Si existe un Staging activo con cambios en curso, también se valida ahí antes de subir a producción.
-
-
+> **Importante:** Se crean desde `main`, no desde `develop`. Una vez resuelta la corrección, se fusionan en dos destinos: `main` (para liberar el fix) y `develop` (para que el fix no se pierda en el siguiente ciclo). Si existe un Staging activo con cambios en curso, también se valida ahí antes de subir a producción.
 
 ---
 
@@ -156,11 +155,11 @@ Production despliega la rama `main`. El cambio queda disponible para los usuario
 
 Es importante distinguir que `develop` es una **rama** y Development es un **ambiente**. No son lo mismo ni tienen una relación fija obligatoria.
 
-| Ambiente | Rama desplegada |
-|---|---|
-| Development | Variable (`feature/*`, `fix/*`, `hotfix/*`) |
-| Staging | `develop` |
-| Production | `main` |
+| Ambiente    | Rama desplegada                          | Propósito                              |
+|-------------|------------------------------------------|----------------------------------------|
+| Development | Variable (`feature/*`, `fix/*`, `hotfix/*`) | Pruebas técnicas en curso           |
+| Staging     | `develop`                                | Validación funcional y QA              |
+| Production  | `main`                                   | Ambiente estable para usuarios finales |
 
 ---
 
@@ -182,14 +181,15 @@ Cada ambiente debe tener su propia configuración para los siguientes aspectos, 
 
 Cada ambiente opera con su propia base de datos:
 
-| Ambiente | Base de datos |
-|---|---|
-| Production | DB Production |
-| Staging | DB Staging (puede ser copia controlada de producción) |
-| Development | DB Development (datos de prueba únicamente) |
+| Ambiente    | Base de datos                                          |
+|-------------|--------------------------------------------------------|
+| Production  | DB Production                                          |
+| Staging     | DB Staging (puede ser copia controlada de producción)  |
+| Development | DB Development (datos de prueba únicamente)            |
 
 *Las bases de datos no deben compartirse entre ambientes bajo ninguna circunstancia.*
-Un *punto de atención especial* en CodeIgniter es el manejo de migraciones de base de datos. Se recomienda usar el sistema de migraciones nativo del framework y mantener los archivos de migración versionados en el repositorio. El flujo correcto es: ejecutar migraciones primero en Development, validar en Staging y solo entonces aplicarlas en Production. Nunca se deben aplicar cambios de esquema directamente en la base de datos productiva sin haber pasado por los ambientes previos.
+
+Un punto de atención especial en CodeIgniter es el manejo de migraciones de base de datos. Se recomienda usar el sistema de migraciones nativo del framework y mantener los archivos de migración versionados en el repositorio. El flujo correcto es: ejecutar migraciones primero en Development, validar en Staging y solo entonces aplicarlas en Production. Nunca se deben aplicar cambios de esquema directamente en la base de datos productiva sin haber pasado por los ambientes previos.
 
 ---
 
@@ -216,11 +216,11 @@ Esta configuración cubre el 90% de la seguridad necesaria, delegando el paso fi
 
 Se mantiene la convención de prefijos para facilitar la identificación y limpieza del repositorio:
 
-| Prefijo | Uso |
-|---|---|
-| `feature/` | Nuevas funcionalidades |
-| `fix/` | Correcciones en ciclo normal |
-| `hotfix/` | Correcciones urgentes en producción |
+| Prefijo    | Uso                                  |
+|------------|--------------------------------------|
+| `feature/` | Nuevas funcionalidades               |
+| `fix/`     | Correcciones en ciclo normal         |
+| `hotfix/`  | Correcciones urgentes en producción  |
 
 ---
 
@@ -256,8 +256,7 @@ En ramas compartidas como `develop` y `main` siempre se debe usar `git revert`. 
 
 ### Fase 3 — Automatización gradual
 
-- Configuración de webhooks o flujo de deploy automático (el repositorio remoto ya debe estar operativo desde la Fase 1 como requisito para los GitHub Rulesets)
-- Configuración de webhook o flujo de deploy automático
+- Configuración de webhooks o flujo de deploy automático *(el repositorio remoto ya debe estar operativo desde la Fase 1 como requisito para los GitHub Rulesets)*
 - Estandarización del proceso de promoción entre ambientes
 
 ---
