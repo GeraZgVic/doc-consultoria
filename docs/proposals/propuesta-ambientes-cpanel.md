@@ -1,8 +1,8 @@
 # Propuesta de Arquitectura de Ambientes
 
 **Elaborado por:** Ing. Victor Gerardo Zuñiga Gamboa  
-**Cliente:** Siccoms  
-**Fecha:** 21 de abril de 2025  
+**Cliente:** [Cliente]  
+**Fecha:** [Fecha]  
 **Versión:** v1.0  
 
 ---
@@ -15,7 +15,7 @@ Definir una base técnica clara para separar el sistema en tres ambientes indepe
 
 ## Contexto
 
-El sistema actual está montado en un hosting con cPanel y fue desarrollado con CodeIgniter. A partir de este escenario, la propuesta considera una estrategia compatible con subdominios por ambiente, un solo repositorio Git, ramas organizadas por flujo de trabajo y configuraciones independientes por entorno.
+El sistema está montado en un hosting con cPanel. A partir de este escenario, la propuesta considera una estrategia compatible con subdominios por ambiente, un solo repositorio Git, ramas organizadas por flujo de trabajo y configuraciones independientes por entorno.
 
 ---
 
@@ -61,11 +61,11 @@ Flujo completo de promoción de código, roles y ambientes.
 
 ---
 
-### Diagrama 2 — Operativo por cliente (Siccoms)
+### Diagrama 2 — Operativo por cliente
 
 Arquitectura de ambientes y flujo de promoción aterrizado al cliente.
 
-![Diagrama Operativo Siccoms](../diagrams/diagram-02-operativo-siccoms.png)
+![Diagrama Operativo por Cliente](../diagrams/diagram-02-operativo-cliente.png)
 
 ---
 
@@ -189,7 +189,7 @@ Cada ambiente opera con su propia base de datos:
 
 *Las bases de datos no deben compartirse entre ambientes bajo ninguna circunstancia.*
 
-Un punto de atención especial en CodeIgniter es el manejo de migraciones de base de datos. Se recomienda usar el sistema de migraciones nativo del framework y mantener los archivos de migración versionados en el repositorio. El flujo correcto es: ejecutar migraciones primero en Development, validar en Staging y solo entonces aplicarlas en Production. Nunca se deben aplicar cambios de esquema directamente en la base de datos productiva sin haber pasado por los ambientes previos.
+Un punto de atención especial es el manejo de migraciones de base de datos. Se recomienda usar el sistema de migraciones del framework utilizado y mantener los archivos de migración versionados en el repositorio. El flujo correcto es: ejecutar migraciones primero en Development, validar en Staging y solo entonces aplicarlas en Production. Nunca se deben aplicar cambios de esquema directamente en la base de datos productiva sin haber pasado por los ambientes previos.
 
 ---
 
