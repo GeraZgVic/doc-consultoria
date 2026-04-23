@@ -65,7 +65,7 @@ Flujo completo de promoción de código, roles y ambientes.
 
 Arquitectura de ambientes y flujo de promoción aterrizado al cliente.
 
-![Diagrama Operativo por Cliente](../diagrams/diagram-02-operativo-cliente.png)
+![Diagrama Operativo por Cliente](../diagrams/diagram-02-operativo-siccoms.png)
 
 ---
 
