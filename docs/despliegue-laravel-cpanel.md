@@ -1,4 +1,3 @@
-[ubizdevops@103-138-188-103 laravel_app]$ cat despliegue-laravel-cpanel.md
 # Despliegue de Laravel en servidor cPanel
 
 > Documentación paso a paso para levantar una aplicación Laravel en un servidor cPanel compartido.
