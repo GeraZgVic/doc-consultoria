@@ -1,5 +1,5 @@
 # Arquitectura Técnica — Plataforma Corte Láser GrupoVillas
-**Versión:** 2.3  
+**Versión:** 2.5  
 **Fecha:** Mayo 2026  
 **Desarrollador:** Ing. Victor Gerardo Zúñiga Gamboa  
 **Cliente:** Arq. Miguel Villanueva — GrupoVillas  
@@ -12,7 +12,7 @@
 | Capa | Tecnología | Notas |
 |---|---|---|
 | Backend | Laravel 12 | Versión estable actual, mínimos breaking changes |
-| Autenticación | Laravel 12 Starter Kit (Livewire) | Breeze ya no recibe actualizaciones en L12, se usa el starter kit oficial |
+| Autenticación | Laravel Breeze 2.4 (stack Livewire) | Breeze sigue soportado en L12. Se eligió sobre el starter kit oficial para mantener Mary UI como librería de componentes, evitando conflicto con Flux UI |
 | Frontend reactivo | Livewire 4 | Estable desde enero 2026, Single File Components por defecto |
 | UI Components | Mary UI + Tailwind CSS | Diseñado específicamente para Livewire |
 | Templating | Blade | |
@@ -67,6 +67,8 @@
 | M12 | Inventario Básico de Materiales | Control de materiales disponibles, merma y reposición |
 | M13 | Multiusuario y Permisos | Más usuarios con roles configurables desde el panel |
 | M14 | Chatbot Avanzado | Chat en vivo interno o integración con IA (sujeto a costo y aprobación del cliente) |
+| M15 | Activity Log / Auditoría | Registro de quién cambió qué y cuándo — `spatie/laravel-activitylog` |
+| M16 | Versionado de Cotizaciones | Revisiones de cotización con historial completo (`parent_quote_id`) |
 
 ---
 
@@ -74,8 +76,8 @@
 
 | # | Módulo | Descripción |
 |---|---|---|
-| M15 | Facturación CFDI | Generación de facturas electrónicas — **requiere contratación de servicio externo (ej. Facturapi)** |
-| M16 | Integración WhatsApp Business API | Notificaciones por WhatsApp — **requiere contratación Meta / Twilio, costo adicional** |
+| M17 | Facturación CFDI | Generación de facturas electrónicas — **requiere contratación de servicio externo (ej. Facturapi)** |
+| M18 | Integración WhatsApp Business API | Notificaciones por WhatsApp — **requiere contratación Meta / Twilio, costo adicional** |
 
 > **Nota:** Los módulos de Administración de Obras y Papelería corresponden a líneas de negocio
 > independientes dentro de GrupoVillas. Se consideran proyectos separados con su propio
@@ -104,6 +106,7 @@ Se respetan las convenciones de Laravel para aprovechar Eloquent sin configuraci
 | Clave primaria | `id` (Eloquent la detecta automáticamente) | `id` |
 | Timestamps | `created_at`, `updated_at` (manejados por Eloquent) | — |
 | Migraciones | Versionadas en el repositorio, ejecutadas por ambiente | `database/migrations/` |
+| Estados | PHP Enums nativos — nunca strings sueltos | `OrderStatusEnum::RECEIVED` |
 
 > **Sobre migraciones:** Se usará el sistema de migraciones de Laravel para mantener control
 > de versiones del esquema de base de datos. Toda modificación al esquema se realiza mediante
@@ -122,6 +125,23 @@ Se respetan las convenciones de Laravel para aprovechar Eloquent sin configuraci
 | `NotificationLog` | `notification_logs` | |
 | `Faq` | `faqs` | |
 
+### PHP Enum de estados del pedido
+
+```php
+enum OrderStatusEnum: string
+{
+    case RECEIVED           = 'received';
+    case UNDER_REVIEW       = 'under_review';
+    case REQUIRES_INFO      = 'requires_info';
+    case QUOTE_READY        = 'quote_ready';
+    case DEPOSIT_PENDING    = 'deposit_pending';
+    case IN_PRODUCTION      = 'in_production';
+    case READY_FOR_DELIVERY = 'ready_for_delivery';
+    case DELIVERED          = 'delivered';
+    case CANCELLED          = 'cancelled';
+}
+```
+
 ---
 
 ## 5. Modelos de Base de Datos (V1)
@@ -129,7 +149,7 @@ Se respetan las convenciones de Laravel para aprovechar Eloquent sin configuraci
 ### `users`
 ```
 id, name, email, password, role (admin|cortador|cliente),
-phone, created_at, updated_at
+phone, created_at, updated_at, deleted_at
 ```
 
 ### `job_requests`
@@ -140,20 +160,21 @@ description, material_type, thickness,
 piece_count, scale, file_path,
 file_name, notes, schedule (regular|urgent),
 status, attended_by (FK → users),
-created_at, updated_at
+created_at, updated_at, deleted_at
 ```
 
 ### `quotes`
 ```
 id, job_request_id (FK → job_requests),
+parent_quote_id (FK → quotes, nullable),   ← revisiones futuras
 generated_by (FK → users),
 material_cost, machine_time_cost,
 labor_cost, waste_factor,
 file_adjustment_fee, subtotal, total,
 validity_days, payment_conditions,
-folio, pdf_path,
+folio (uuid), pdf_path,
 status (draft|sent|approved|rejected),
-created_at, updated_at
+created_at, updated_at, deleted_at
 ```
 
 ### `orders`
@@ -163,13 +184,13 @@ quote_id (FK → quotes),
 deposit_required, deposit_paid,
 remaining_balance, payment_proof_path,
 estimated_delivery_date, current_status,
-internal_notes, created_at, updated_at
+internal_notes, created_at, updated_at, deleted_at
 ```
 
 ### `order_statuses` (historial de estados)
 ```
 id, order_id (FK → orders),
-status, changed_by (FK → users),
+status (OrderStatusEnum), changed_by (FK → users),
 notes, created_at
 ```
 
@@ -188,12 +209,16 @@ sort_order, active (boolean),
 created_at, updated_at
 ```
 
+> **Soft Deletes:** Los modelos `User`, `JobRequest`, `Quote` y `Order` implementan `SoftDeletes`.
+> Los registros eliminados no se borran físicamente de la base de datos, permitiendo recuperación
+> ante errores y auditoría futura.
+
 ---
 
-## 5. Flujo de Estados del Pedido (V1)
+## 6. Flujo de Estados del Pedido (V1)
 
-> Los valores de `current_status` en la tabla `orders` siguen la convención `snake_case` en inglés,
-> consistente con las convenciones de Laravel del proyecto.
+> Los valores de `current_status` en la tabla `orders` se manejan con `OrderStatusEnum` (PHP Enum nativo).
+> Ver sección 4 para la definición completa del Enum.
 
 ```
 [received]           — Solicitud recibida
@@ -219,7 +244,7 @@ created_at, updated_at
 
 ---
 
-## 6. Arquitectura de Capas — Controlador Ligero / Servicio Pesado
+## 7. Arquitectura de Capas — Controlador Ligero / Servicio Pesado
 
 ```
 HTTP Request
@@ -238,10 +263,13 @@ HTTP Request
 
 ---
 
-## 7. Estructura de Carpetas Laravel (V1)
+## 8. Estructura de Carpetas Laravel (V1)
 
 ```
 app/
+├── Enums/
+│   └── OrderStatusEnum.php                   → PHP Enum nativo de estados
+│
 ├── Http/
 │   ├── Controllers/
 │   │   ├── Admin/
@@ -279,10 +307,10 @@ app/
 │       └── FaqWidget.php
 │
 ├── Models/
-│   ├── User.php
-│   ├── JobRequest.php
-│   ├── Quote.php
-│   ├── Order.php
+│   ├── User.php                              → SoftDeletes
+│   ├── JobRequest.php                        → SoftDeletes
+│   ├── Quote.php                             → SoftDeletes
+│   ├── Order.php                             → SoftDeletes
 │   ├── OrderStatus.php
 │   ├── NotificationLog.php
 │   └── Faq.php
@@ -315,7 +343,7 @@ resources/views/
 
 ---
 
-## 8. Convenciones de Desarrollo
+## 9. Convenciones de Desarrollo
 
 | Aspecto | Convención |
 |---|---|
@@ -323,60 +351,78 @@ resources/views/
 | Idioma de la UI | Español |
 | Nomenclatura modelos | PascalCase singular en inglés — ver sección 4 |
 | Nomenclatura tablas | snake_case plural en inglés — ver sección 4 |
+| Estados del pedido | PHP Enum nativo `OrderStatusEnum` — nunca strings sueltos |
 | Rutas admin | Prefijo `/admin/` con middleware `role:admin,cortador` |
 | Rutas cliente | Prefijo `/` con middleware `role:cliente` |
+| Rate limiting | Middleware `throttle` en todas las rutas del portal cliente |
 | Lógica de negocio | Siempre en `Services/`, nunca en Controllers ni Livewire |
 | Acciones atómicas | En `Actions/` cuando son reutilizables entre Services |
 | Migraciones | Versionadas en el repositorio. Flujo: Development → Staging → Production. Nunca modificar esquema directo en BD. |
+| Soft Deletes | `User`, `JobRequest`, `Quote`, `Order` — nunca borrado físico |
+| UUIDs públicos | Folios y URLs de tracking usan UUID — nunca ID numérico expuesto |
 | PDF | `barryvdh/laravel-dompdf` |
 | Correo | Laravel Mail con SMTP de cPanel |
-| Archivos | Laravel Storage — disco `local`, carpeta `storage/app/job-requests/` |
+| Archivos | Laravel Storage — disco `local`, carpeta `storage/app/job-requests/` — nunca acceso público directo |
+| Validación de archivos | MIME type real + extensión + tamaño. Nombre aleatorio en storage. |
 | Formatos aceptados | `.dxf`, `.dwg` — máximo 5MB por archivo |
 | Permisos y roles | `spatie/laravel-permission` |
+| Queues | Driver `database` desde V1 — confirmar soporte de workers con Carlos antes de implementar |
 
 ---
 
-## 9. Consideraciones de Despliegue en cPanel
+## 10. Consideraciones de Despliegue en cPanel
 
-- PHP 8.2 o superior requerido
+- **PHP 8.2.31** confirmado en el servidor ✅
+- **OPcache** activo ✅
+- `memory_limit`: requiere ajuste de 128M → **256M** (pendiente Carlos — WHM)
+- `upload_max_filesize`: requiere ajuste de 2M → **5M** (pendiente Carlos — WHM)
+- `post_max_size`: requiere ajuste de 8M → **16M** (pendiente Carlos — WHM)
 - Crear base de datos MySQL desde el panel de cPanel
 - Configurar `.env` con credenciales de BD y SMTP
 - Permisos `775` en `storage/` y `bootstrap/cache/`
 - `APP_ENV=production` · `APP_DEBUG=false`
-- Configurar cron job: `* * * * * php /ruta/artisan schedule:run`
+- Configurar cron job: `* * * * * php /ruta/artisan schedule:run >> /dev/null 2>&1`
 - Document root apuntando a `/public` del proyecto Laravel
 - Subida vía Git o FTP/SFTP
+- Definir estrategia de backup para archivos DXF/DWG en `storage/app/job-requests/`
 
 ---
 
-## 10. Dependencias Clave
+## 11. Dependencias Clave
 
 ```json
 // composer.json
 "laravel/framework": "^12.0",
+"laravel/breeze": "^2.4",
 "livewire/livewire": "^4.0",
-"robsontenorio/mary": "^*",
-"barryvdh/laravel-dompdf": "^2.x",
-"spatie/laravel-permission": "^6.x"
+"robsontenorio/mary": "^2.8",
+"barryvdh/laravel-dompdf": "^3.0",
+"spatie/laravel-permission": "^6.0"
 
 // package.json
 "tailwindcss": "^3.x",
 "@tailwindcss/forms": "^0.5.x"
 ```
 
+> **Nota:** `barryvdh/laravel-dompdf ^2.x` no es compatible con Laravel 12. Se requiere `^3.0`.
+> Los constraints tipo `^6.x` no son válidos en Composer — usar `^6.0`.
+
 ---
 
-## 11. Pendientes por Resolver
+## 12. Pendientes por Resolver
 
+- [ ] Confirmar ajustes PHP con Carlos (memory_limit, upload_max_filesize, post_max_size)
+- [ ] Confirmar soporte de queue workers o solo crons en el hosting
 - [ ] Confirmar credenciales y plan de hosting con Carlos
 - [ ] Confirmar subdominio o dominio donde vivirá el sistema
 - [ ] Obtener formato de cotización CACEP para replicar estructura en PDF
 - [ ] Confirmar SMTP disponible en cPanel (host, puerto, usuario)
 - [ ] Definir preguntas frecuentes iniciales para el FAQ con el cliente
+- [ ] Definir estrategia de backup para archivos subidos por clientes
 
 ---
 
-## 12. Decisiones de Alcance Documentadas
+## 13. Decisiones de Alcance Documentadas
 
 | Decisión | Definición |
 |---|---|
@@ -387,7 +433,15 @@ resources/views/
 | Impresión 3D | No forma parte de ninguna versión comprometida. Se evalúa a futuro. |
 | Cotización desde DXF | Alta complejidad. Sin compromiso de versión. Se evalúa a futuro. |
 | Multiusuario | V1 opera con 1 Admin y 1 Cortador. Gestión ampliada en V2. |
+| Estados del pedido | Manejados con PHP Enum nativo `OrderStatusEnum`. Sin strings sueltos. |
+| Soft Deletes | Activo en `User`, `JobRequest`, `Quote`, `Order` desde V1. Sin borrado físico. |
+| UUIDs públicos | Folios y URLs de tracking usan UUID. IDs numéricos nunca expuestos externamente. |
+| Activity Log | Diferido a V2 con `spatie/laravel-activitylog`. Modelos diseñados para ser auditables desde V1. |
+| Versionado de cotizaciones | Lógica completa en V2. Columna `parent_quote_id` nullable incluida desde V1. |
+| Queues | Driver `database` preparado desde V1. Confirmar soporte de workers con Carlos antes de activar. |
+| Rate limiting | Middleware `throttle` activo en rutas del portal cliente desde V1. |
+| Autenticación | Laravel Breeze 2.4 con stack Livewire. Elegido sobre el starter kit oficial de L12 para mantener Mary UI y evitar conflicto con Flux UI. |
 
 ---
 
-*Documento de uso interno — Desarrollo Plataforma Corte Láser GrupoVillas — v2.3 Mayo 2026*
+*Documento de uso interno — Desarrollo Plataforma Corte Láser GrupoVillas — v2.5 Mayo 2026*
