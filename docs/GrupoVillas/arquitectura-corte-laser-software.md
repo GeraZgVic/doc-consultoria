@@ -148,9 +148,20 @@ enum OrderStatusEnum: string
 
 ### `users`
 ```
-id, name, email, password, role (admin|cortador|cliente),
-phone, created_at, updated_at, deleted_at
+id, name, email, phone,
+password, created_at, updated_at, deleted_at
 ```
+
+### Roles y permisos (Spatie)
+```
+roles: id, name, guard_name, created_at, updated_at
+permissions: id, name, guard_name, created_at, updated_at
+model_has_roles: role_id (FK → roles), model_type, model_id
+model_has_permissions: permission_id (FK → permissions), model_type, model_id
+role_has_permissions: permission_id (FK → permissions), role_id (FK → roles)
+```
+> **Nota:** El rol del usuario **no** se guarda en `users.role`; se obtiene mediante la relación
+> `model_has_roles` (`model_type = App\\Models\\User`, `model_id = users.id`).
 
 ### `job_requests`
 ```
